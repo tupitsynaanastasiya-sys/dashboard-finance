@@ -213,6 +213,36 @@ function paintPay(){
   const bt=document.getElementById('pay-title'); if(bt && key) bt.textContent='Платежи — план, подписанные и платежи на '+key.slice(6,8)+'.'+key.slice(4,6)+'.'+key.slice(0,4)+' (млн.руб.)';
 }
 
+function monthIdxWord(s){ if(!s) return null; const t=(''+s).toLowerCase().trim(); const mm={янв:1,фев:2,мар:3,апр:4,ма:5,июн:6,июл:7,авг:8,сен:9,окт:10,ноя:11,дек:12}; for(const k in mm){ if(t.startsWith(k)) return mm[k]; } const m=t.match(/^(0?[1-9]|1[0-2])$/); return m? +m[1] : null; }
+function rebuildPlanFact(){
+  const key = latestKey(STATE.pay||[]) || latestKey(STATE.ds||[]); const curM = key? parseInt(key.slice(4,6),10) : null;
+  const mName={1:'Январь',2:'Февраль',3:'Март',4:'Апрель',5:'Май',6:'Июнь',7:'Июль',8:'Август',9:'Сентябрь',10:'Октябрь',11:'Ноябрь',12:'Декабрь'};
+  function build(rows, targetId, legId){
+    if(!rows || !rows.length) return;
+    const map={};
+    rows.forEach(r=>{ const dept=(''+(r['Отдел']||'')).trim(); if(!dept) return; const mi=monthIdxWord(r['Месяц']); const p=num(r['План']); const f=num(r['Факт']); if(!map[dept]) map[dept]={dept,pT:0,fT:0,pM:0,fM:0}; map[dept].pT+=p; map[dept].fT+=f; if(curM && mi===curM){ map[dept].pM+=p; map[dept].fM+=f; } });
+    const data=Object.values(map); if(!data.length) return; const wrap=document.getElementById(targetId); if(!wrap) return; wrap.innerHTML='';
+    const maxP=Math.max(1, ...data.map(x=>x.pT));
+    data.forEach(r=>{ const row=document.createElement('div'); row.className='row'; row.innerHTML=`
+      <div class="row-label">${r.dept}</div>
+      <div class="bars">
+        <div class="lane" title="Весь период — План: ${fmtInt(r.pT)}, Факт: ${fmtInt(r.fT)}">
+          <div class="bar plan" style="width:${(r.pT/maxP*100).toFixed(2)}%"></div>
+          <div class="bar fact" style="width:${(r.fT/maxP*100).toFixed(2)}%"></div>
+          <div class="caption">Всего: П ${fmtInt(r.pT)}, Ф ${fmtInt(r.fT)} — ${r.pT?fmtInt(r.fT/r.pT*100):'0'}%</div>
+        </div>
+        <div class="lane" title="${mName[curM||9] || ''} — План: ${fmtInt(r.pM)}, Факт: ${fmtInt(r.fM)}">
+          <div class="bar plan" style="width:${(r.pM/maxP*100).toFixed(2)}%"></div>
+          <div class="bar fact" style="width:${(r.fM/maxP*100).toFixed(2)}%"></div>
+          <div class="caption">${['','Янв','Фев','Мар','Апр','Май','Июн','Июл','Авг','Сен','Окт','Ноя','Дек'][curM||9]}: П ${fmtInt(r.pM)}, Ф ${fmtInt(r.fM)} — ${r.pM?fmtInt(r.fM/r.pM*100):'0'}%</div>
+        </div>
+      </div>`; wrap.appendChild(row); });
+    const leg=document.getElementById(legId); if(leg){ leg.innerHTML = '<span><span style="display:inline-block;width:14px;height:14px;border-radius:4px;background:var(--plan);opacity:.5;margin-right:6px;"></span>План</span>'+
+      '<span><span style="display:inline-block;width:14px;height:14px;border-radius:4px;background:var(--fact);margin-right:6px;"></span>Факт</span>'; }
+  }
+  build(STATE.pfSales, 'pf-sales', 'pf-sales-leg');
+  build(STATE.pfManuf, 'pf-manuf', 'pf-manuf-leg');
+}
 async function loadAll(){
   statusEl.textContent='Загрузка…';
   log('--- Начало загрузки ---');
@@ -228,7 +258,7 @@ async function loadAll(){
     STATE.pfSales = parseCSV(t3);
     STATE.pfManuf = parseCSV(t4);
     log('Успех: все CSV считаны.');
-    paintDs(); paintPay();
+    paintDs(); paintPay(); rebuildPlanFact();
     statusEl.textContent='Готово: данные обновлены из Google Sheets';
     setTimeout(()=> statusEl.textContent='', 4000);
   }catch(e){
@@ -241,6 +271,4 @@ document.getElementById('reload').addEventListener('click', loadAll);
 loadAll();
 </script>
 </body>
-</html>
-
 </html>
