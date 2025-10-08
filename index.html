@@ -3,87 +3,98 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Дашборд • Google Sheets auto (с диагностикой и запасным каналом)</title>
+<title>Финансовый дашборд • KPI, ДС, Расходы и План‑факт</title>
 <style>
-  :root { --bg:#e9f1fb; --text:#111; --card:#fff; --card2:#d4e4fb; --grid:#c5d3ea; --shadow:0 6px 22px rgba(0,0,0,.08);
-          --plan:#a9c4ff; --fact:#3a74ff; --plan2:#0ea5a2; --fact2:#14b8a6; }
-  html,body { margin:0; height:100%; background:var(--bg); color:var(--text); font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial; }
-  .frame { width:100vw; height:100vh; display:grid; place-items:center; }
-  .canvas { aspect-ratio:16/9; width:min(96vw, 1728px); box-sizing:border-box; padding:clamp(16px,2vw,32px); display:grid; grid-template-rows:auto auto 1fr 1fr; gap:clamp(12px,1.4vw,20px);}  
-  .title { font-weight:800; font-size: clamp(20px,2.2vw,28px); }
+  :root { 
+    --bg:#e9f1fb; --text:#111; --card:#fff; --card2:#d4e4fb; --grid:#c5d3ea; --shadow:0 6px 22px rgba(0,0,0,.08);
+    --plan:#0ea5a2; --fact:#14b8a6; /* общие цвета */
+  }
+  html,body { margin:0; height:100%; background:var(--bg); color:var(--text); font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial; }
+  .frame { width:100vw; min-height:100vh; display:grid; place-items:center; }
+  .canvas { aspect-ratio:16/9; width:min(96vw,1728px); box-sizing:border-box; padding:clamp(16px,2vw,32px); display:grid; grid-template-rows:auto auto 1fr 1fr; gap:clamp(12px,1.4vw,20px); }
+  .title { font-weight:800; font-size:clamp(20px,2.2vw,28px); }
   .toolbar { display:flex; flex-wrap:wrap; gap:10px; align-items:center; background:#ffffffcc; border:1px solid #cbd5e1; border-radius:12px; padding:10px 12px; box-shadow:var(--shadow); backdrop-filter: blur(3px); }
   .pill { padding:6px 10px; border-radius:10px; border:1px solid #60a5fa; background:#dbeafe; cursor:pointer; font-weight:600; }
   .muted { font-size:12px; color:#0f766e; }
-  .kpi { display:grid; grid-template-columns:repeat(3,1fr); gap:clamp(10px,1.2vw,18px);}  
-  .card { background:var(--card2); border-radius:18px; padding:clamp(14px,1.6vw,22px); box-shadow:var(--shadow);}  
-  .label { font-weight:600; }  
-  .value { font-size:clamp(28px,3.2vw,42px); font-weight:800; }  
-  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:clamp(12px,1.4vw,20px);}  
-  .block { background:var(--card); border-radius:16px; box-shadow:var(--shadow); padding:clamp(12px,1.4vw,18px); display:grid; gap:12px; }  
-  .block-title { font-weight:700; font-size:clamp(14px,1.6vw,18px);}  
-  .bar-row { display:grid; grid-template-columns:160px 1fr 140px; gap:10px; align-items:center; }  
-  .bar-track { height:28px; background:#f5f8fe; border:1px solid #cad8ef; border-radius:12px; overflow:hidden; display:flex; position:relative; }  
-  .seg { height:100%; }  
-  .bar-value { text-align:right; font-weight:700; }  
-  .lane { position:relative; background:#f5f8fe; border:1px solid #cad8ef; border-radius:12px; height:30px; }  
-  .bar { position:absolute; top:0; left:0; height:100%; border-radius:12px; }  
-  .bar.plan { background:var(--plan); opacity:.5; }  
-  .bar.fact { background:var(--fact); }  
-  .legend { display:flex; gap:16px; flex-wrap:wrap; font-size:13px; align-items:center; }  
-  pre.log { max-height:140px; overflow:auto; background:#0b1220; color:#e2e8f0; padding:8px 10px; border-radius:10px; font-size:12px;}  
-  code.small { font-size:11px; }
+  .kpi { display:grid; grid-template-columns:repeat(3,1fr); gap:clamp(10px,1.2vw,18px); }
+  .card { background:var(--card2); border-radius:18px; padding:clamp(14px,1.6vw,22px); box-shadow:var(--shadow); }
+  .label { font-weight:600; }
+  .value { font-size:clamp(28px,3.2vw,42px); font-weight:800; }
+  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:clamp(12px,1.4vw,20px); }
+  .block { background:var(--card); border-radius:16px; box-shadow:var(--shadow); padding:clamp(12px,1.4vw,18px); display:grid; gap:12px; }
+  .block-title { font-weight:700; font-size:clamp(14px,1.6vw,18px); }
+  /* Поступления/Платежи — полосы */
+  .bar-row { display:grid; grid-template-columns:160px 1fr 140px; gap:10px; align-items:center; }
+  .bar-track { height:28px; background:#f5f8fe; border:1px solid #cad8ef; border-radius:12px; overflow:hidden; display:flex; position:relative; }
+  .seg { height:100%; display:flex; align-items:center; justify-content:center; color:#fff; font-weight:700; font-size:12px; text-shadow:0 1px 2px rgba(0,0,0,.35); padding:0 6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .bar-value { text-align:right; font-weight:700; }
+  .legend { display:flex; gap:16px; flex-wrap:wrap; font-size:13px; align-items:center; }
+  /* План‑факт две дорожки */
+  .rows { display:grid; gap:12px; }
+  .row { display:grid; grid-template-columns:180px 1fr; gap:12px; align-items:center; }
+  .bars { display:grid; gap:6px; }
+  .lane { position:relative; background:#f5f8fe; border:1px solid #cad8ef; border-radius:12px; height:30px; }
+  .bar { position:absolute; top:0; left:0; height:100%; border-radius:12px; }
+  .bar.plan { background:var(--plan); opacity:.45; }
+  .bar.fact { background:var(--fact); }
+  .bar.plan.sep { background:repeating-linear-gradient(45deg, rgba(14,165,162,.8) 0 6px, rgba(14,165,162,.5) 6px 12px); }
+  .bar.fact.sep { background:repeating-linear-gradient(45deg, rgba(20,184,166,.9) 0 6px, rgba(20,184,166,.6) 6px 12px); }
+  .caption { position:absolute; right:8px; top:50%; transform:translateY(-50%); font-size:12px; font-weight:600; color:#0f172a; }
 </style>
 </head>
 <body>
-<div class="frame">
-<div class="canvas">
-  <div class="title">Финансовый дашборд • KPI, ДС, Расходы, План‑факт</div>
+<div class="frame"><div class="canvas">
+  <div class="title">Финансовый дашборд • KPI, ДС, Расходы и План‑факт</div>
 
   <div class="toolbar">
+    <strong>Фильтры и данные:</strong>
+    <label style="margin-left:8px;">Дата платежей:
+      <input id="pay-date" type="date" style="font-size:13px;padding:4px 6px;border:1px solid #94a3b8;border-radius:8px;margin-left:6px;"/>
+    </label>
+    <button id="apply-paydate" class="pill">Обновить дату</button>
     <button id="reload" class="pill">Обновить из Google Sheets</button>
     <span id="status" class="muted"></span>
-    <details>
-      <summary style="cursor:pointer;font-weight:600;">Показать ссылки</summary>
+    <details style="margin-left:auto"><summary style="cursor:pointer;font-weight:600;">Показать ссылки</summary>
       <div style="font-size:12px;line-height:1.6;margin-top:6px;">
-        <div><b>ДС:</b> <code id="u-ds" class="small"></code></div>
-        <div><b>Расходы:</b> <code id="u-pay" class="small"></code></div>
-        <div><b>ПФ Продажи:</b> <code id="u-pfs" class="small"></code></div>
-        <div><b>ПФ Изг.:</b> <code id="u-pfm" class="small"></code></div>
+        <div><b>ДС:</b> <code id="u-ds"></code></div>
+        <div><b>Расходы:</b> <code id="u-pay"></code></div>
+        <div><b>ПФ Продажи:</b> <code id="u-pfs"></code></div>
+        <div><b>ПФ Изг.:</b> <code id="u-pfm"></code></div>
       </div>
     </details>
   </div>
 
   <div class="kpi">
-    <div class="card"><div class="label">Свободные ДС (млн.руб.)</div><div class="value">—</div></div>
-    <div class="card"><div class="label">В т.ч. кредитные ДС (млн.руб.)</div><div class="value">—</div></div>
-    <div class="card"><div class="label">Платежи всего (млн.руб.)</div><div class="value">—</div></div>
+    <div class="card"><div class="label">Свободные ДС (млн.руб.)</div><div class="value" id="kpi-free">—</div></div>
+    <div class="card"><div class="label">В т.ч. кредитные ДС (млн.руб.)</div><div class="value" id="kpi-credit">—</div></div>
+    <div class="card"><div class="label">Платежи всего (млн.руб.)</div><div class="value" id="kpi-pay">—</div></div>
   </div>
 
   <div class="grid2">
-    <div class="block">
+    <div class="block" id="ds-block">
       <div class="block-title">Плановые поступления ДС (млн.руб.)</div>
-      <div class="bar-row"><div>Текущие поступления</div><div class="bar-track" id="ds-cur"></div><div class="bar-value" id="ds-cur-t">—</div></div>
-      <div class="bar-row"><div>Поступления авансов</div><div class="bar-track" id="ds-adv"></div><div class="bar-value" id="ds-adv-t">—</div></div>
-      <div class="legend" id="ds-leg"></div>
+      <div class="bar-row"><div>Текущие поступления</div><div class="bar-track" id="ds-cur"></div><div class="bar-value" id="ds-cur-sum">—</div></div>
+      <div class="bar-row"><div>Поступления авансов</div><div class="bar-track" id="ds-adv"></div><div class="bar-value" id="ds-adv-sum">—</div></div>
+      <div class="legend" id="ds-legend"></div>
     </div>
-    <div class="block">
+    <div class="block" id="pay-block">
       <div class="block-title" id="pay-title">Платежи — план, подписанные и платежи (млн.руб.)</div>
       <div class="bar-row"><div>Плановые платежи</div><div class="bar-track"><div class="seg" style="width:100%;background:#cfe2ff"></div></div><div class="bar-value" id="pay-plan">—</div></div>
       <div class="bar-row"><div>Подписанные платежи</div><div class="bar-track"><div class="seg" style="width:100%;background:#bcd0ff"></div></div><div class="bar-value" id="pay-signed">—</div></div>
-      <div class="bar-row"><div id="pay-row-label">Платежи</div><div class="bar-track" id="pay-track"></div><div class="bar-value" id="pay-tot">—</div></div>
+      <div class="bar-row"><div id="pay-row-label">Платежи</div><div class="bar-track" id="pay-track"></div><div class="bar-value" id="pay-total">—</div></div>
       <div class="legend"><span><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#548bbe;margin-right:6px;"></span>УСПГ</span>
-          <span><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#ce9158;margin-right:6px;"></span>ЗМК</span>
-          <span><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#a175bc;margin-right:6px;"></span>Прочие обяз. платежи</span></div>
+        <span><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#ce9158;margin-right:6px;"></span>ЗМК</span>
+        <span><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#a175bc;margin-right:6px;"></span>Прочие обяз. платежи</span></div>
     </div>
   </div>
 
   <div class="grid2">
-    <div class="block">
+    <div class="block" id="pf-sales-block">
       <div class="block-title">План-факт по продажам (млн.руб.)</div>
       <div class="rows" id="pf-sales"></div>
       <div class="legend" id="pf-sales-leg"></div>
     </div>
-    <div class="block">
+    <div class="block" id="pf-manuf-block">
       <div class="block-title">План-факт по изготовлению (тн.)</div>
       <div class="rows" id="pf-manuf"></div>
       <div class="legend" id="pf-manuf-leg"></div>
@@ -92,32 +103,27 @@
 
   <details>
     <summary style="font-weight:700;cursor:pointer;">Показать диагностику загрузки</summary>
-    <pre id="log" class="log"></pre>
+    <pre id="log" style="max-height:160px;overflow:auto;background:#0b1220;color:#e2e8f0;padding:8px 10px;border-radius:10px;font-size:12px;"></pre>
   </details>
-</div>
-</div>
+
+</div></div>
 
 <script>
-// === Настрой: основной документ и GID'ы ===
-const SHEET_ID = "1wqHg1JWH-83QEMDBHcbu-R9RmvSUVTwHI9XCkwopiuU"; // твой файл
+// ===== настройки ссылок =====
+const SHEET_ID = "1wqHg1JWH-83QEMDBHcbu-R9RmvSUVTwHI9XCkwopiuU";
 const URLS_PUB = {
   ds: "https://docs.google.com/spreadsheets/d/e/2PACX-1vTtsd99HZ8-ip15SYsst1DSPviQ3HX6m_BihqhpabEDiiRpV3AVwQS1cTnr0A3_BcdWXw8e-7Eg8jvO/pub?gid=0&single=true&output=csv",
   pay: "https://docs.google.com/spreadsheets/d/e/2PACX-1vTtsd99HZ8-ip15SYsst1DSPviQ3HX6m_BihqhpabEDiiRpV3AVwQS1cTnr0A3_BcdWXw8e-7Eg8jvO/pub?gid=1488750671&single=true&output=csv",
   pfSales: "https://docs.google.com/spreadsheets/d/e/2PACX-1vTtsd99HZ8-ip15SYsst1DSPviQ3HX6m_BihqhpabEDiiRpV3AVwQS1cTnr0A3_BcdWXw8e-7Eg8jvO/pub?gid=1321336445&single=true&output=csv",
   pfManuf: "https://docs.google.com/spreadsheets/d/e/2PACX-1vTtsd99HZ8-ip15SYsst1DSPviQ3HX6m_BihqhpabEDiiRpV3AVwQS1cTnr0A3_BcdWXw8e-7Eg8jvO/pub?gid=2023820019&single=true&output=csv",
 };
-// запасной канал gviz (работает при доступе «все по ссылке», даже если публикация капризничает)
 const URLS_GVIZ = {
   ds: `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&gid=0`,
   pay: `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&gid=1488750671`,
   pfSales: `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&gid=1321336445`,
   pfManuf: `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&gid=2023820019`,
 };
-
-document.getElementById('u-ds').textContent = URLS_PUB.ds;
-document.getElementById('u-pay').textContent = URLS_PUB.pay;
-document.getElementById('u-pfs').textContent = URLS_PUB.pfSales;
-document.getElementById('u-pfm').textContent = URLS_PUB.pfManuf;
+['ds','pay','pfSales','pfManuf'].forEach(k=>{ document.getElementById('u-'+(k==='pfSales'?'pfs':k==='pfManuf'?'pfm':k)).textContent = (k==='pfSales'?URLS_PUB.pfSales:k==='pfManuf'?URLS_PUB.pfManuf:URLS_PUB[k]); });
 
 const log = (m)=>{ const el=document.getElementById('log'); el.textContent += m+"\n"; };
 const statusEl = document.getElementById('status');
@@ -140,112 +146,88 @@ const fmtInt=(n)=> Number(Math.round(n||0)).toLocaleString('ru-RU').replace(/\u0
 const fmtDec3=(n)=>{ const v=Number(n||0); const s=(Math.round(v*1000)/1000).toFixed(3); return s.replace('.',','); };
 function dateKey(val){
   if (val==null) return null; let s=(''+val).trim();
-  const iso = s.match(/^(\d{4})-(\d{2})-(\d{2})/); if(iso) return iso[1]+iso[2]+iso[3];
-  const d4 = s.match(/^(\d{2})\.(\d{2})\.(\d{4})$/); if(d4) return d4[3]+d4[2]+d4[1];
-  const d2 = s.match(/^(\d{2})\.(\d{2})\.(\d{2})$/); if(d2) return (2000+parseInt(d2[3],10))+('0'+d2[2]).slice(-2)+('0'+d2[1]).slice(-2);
-  if (!isNaN(+s) && isFinite(+s) && +s>20000 && +s<60000){ const epoch=new Date(Date.UTC(1899,11,30)); const d=new Date(epoch.getTime()+(+s)*86400000); const y=d.getUTCFullYear(), m=('0'+(d.getUTCMonth()+1)).slice(-2), dd=('0'+d.getUTCDate()).slice(-2); return y+''+m+''+dd; }
+  const iso=s.match(/^(\d{4})-(\d{2})-(\d{2})/); if(iso) return iso[1]+iso[2]+iso[3];
+  const d4=s.match(/^(\d{2})\.(\d{2})\.(\d{4})$/); if(d4) return d4[3]+d4[2]+d4[1];
+  const d2=s.match(/^(\d{2})\.(\d{2})\.(\d{2})$/); if(d2) return (2000+parseInt(d2[3],10))+('0'+d2[2]).slice(-2)+('0'+d2[1]).slice(-2);
+  if(!isNaN(+s)&&isFinite(+s)&&+s>20000&&+s<60000){ const epoch=new Date(Date.UTC(1899,11,30)); const d=new Date(epoch.getTime()+(+s)*86400000); const y=d.getUTCFullYear(), m=('0'+(d.getUTCMonth()+1)).slice(-2), dd=('0'+d.getUTCDate()).slice(-2); return y+''+m+''+dd; }
   return null;
 }
 function latestKey(rows){ let best=null; rows.forEach(r=>{ const k=dateKey(r['Дата']); if(k && (!best || k>best)) best=k; }); return best; }
+function keyLabel(key,short){ if(!key) return ''; const y=key.slice(0,4), m=key.slice(4,6), d=key.slice(6,8); return short? d+'.'+m+'.'+y.slice(-2) : d+'.'+m+'.'+y; }
 
-const STATE={};
+const STATE={ ds:[], pay:[], pfSales:[], pfManuf:[], monthIdx:9 };
 
 async function fetchCsvWithFallback(name){
   const uPub = URLS_PUB[name], uG = URLS_GVIZ[name];
-  try{
-    const r = await fetch(uPub, {cache:'no-store'});
-    log(`[PUB] ${name}: status ${r.status}`);
-    if(!r.ok) throw new Error('pub not ok '+r.status);
-    const t = await r.text(); if(t.includes('необходимо иметь разрешение')||t.toLowerCase().includes('signin')) throw new Error('pub permission');
-    return t;
-  }catch(e){
-    log(`[GVIZ] ${name}: trying fallback due to: ${e.message}`);
-    const r2 = await fetch(uG, {cache:'no-store'});
-    log(`[GVIZ] ${name}: status ${r2.status}`);
-    if(!r2.ok) throw new Error('gviz not ok '+r2.status);
-    return await r2.text();
-  }
+  try{ const r=await fetch(uPub,{cache:'no-store'}); log(`[PUB] ${name}: status ${r.status}`); if(!r.ok) throw new Error('pub not ok '+r.status); const t=await r.text(); if(/необходимо иметь разрешение|signin/i.test(t)) throw new Error('pub permission'); return t; }
+  catch(e){ log(`[GVIZ] ${name}: trying fallback due to: ${e.message}`); const r2=await fetch(uG,{cache:'no-store'}); log(`[GVIZ] ${name}: status ${r2.status}`); if(!r2.ok) throw new Error('gviz not ok '+r2.status); return await r2.text(); }
 }
 
-function paintDs(){
-  const ds=STATE.ds||[]; const key = latestKey(ds);
-  let sv=null, cr=null;
-  ds.forEach(r=>{ if(dateKey(r['Дата'])===key){ const p=(''+(r['Показатель']||'')).trim(); if(p==='Свободные ДС') sv=num(r['Сумма']); if(p==='В том числе кредитные ДС') cr=num(r['Сумма']); } });
-  document.querySelectorAll('.kpi .card .value')[0].textContent = sv!=null?fmtDec3(sv):'—';
-  document.querySelectorAll('.kpi .card .value')[1].textContent = cr!=null?fmtDec3(cr):'—';
-
-  const cur = ds.filter(r=> (''+(r['Показатель']||'')).trim()==='Плановые текущие поступления' && dateKey(r['Дата'])===key && r['Контрагент']);
-  const adv = ds.filter(r=> (''+(r['Показатель']||'')).trim()==='Плановые поступления авансов' && dateKey(r['Дата'])===key && r['Контрагент']);
-  const colorBy = {'Газпромнефть-Снабжение':'#c07c7c','ГСП-4':'#c0ad7c','Прочие':'#a2c07c','Меретояханефтегаз':'#7cc087','Велесстрой':'#7cc0b7','СС7':'#7c97c0'};
-  const order = ['СС7','Велесстрой','Меретояханефтегаз','Газпромнефть-Снабжение','ГСП-4','Прочие'];
-
-  function paint(trackId, totalId, arr){
-    const track=document.getElementById(trackId), total=document.getElementById(totalId); track.innerHTML='';
-    const agg={}; arr.forEach(r=>{ const k=(''+(r['Контрагент']||'')).trim(); if(!k) return; const v=Math.round(num(r['Сумма'])); agg[k]=(agg[k]||0)+v; });
-    const items = order.map(n=>({n, v: agg[n]||0})).filter(x=>x.v>0);
-    const sum = Math.max(1, items.reduce((a,b)=>a+b.v,0));
-    items.forEach(it=>{ const seg=document.createElement('div'); seg.className='seg'; seg.style.cssText=`width:${it.v/sum*100}%;background:${colorBy[it.n]||'#548bbe'};display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:12px;text-shadow:0 1px 2px rgba(0,0,0,.35);padding:0 6px;`; seg.title=it.n+': '+fmtInt(it.v); seg.textContent=fmtInt(it.v); track.appendChild(seg); });
-    total.textContent = fmtInt(items.reduce((a,b)=>a+b.v,0));
-    const leg=document.getElementById('ds-leg'); leg.innerHTML = order.map(name=>`<span><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:${colorBy[name]||'#548bbe'};margin-right:6px;"></span>${name}</span>`).join('');
-  }
-  paint('ds-cur','ds-cur-t',cur);
-  paint('ds-adv','ds-adv-t',adv);
+function paintKPIs(keyDs,keyPay){
+  let sv=null, cr=null, payTot=0;
+  STATE.ds.forEach(r=>{ if(dateKey(r['Дата'])===keyDs){ const p=(''+(r['Показатель']||'')).trim(); if(p==='Свободные ДС') sv=num(r['Сумма']); if(p==='В том числе кредитные ДС') cr=num(r['Сумма']); }});
+  STATE.pay.forEach(r=>{ if(dateKey(r['Дата'])===keyPay){ const p=(''+(r['Показатель']||'')).trim(); if(p==='Платежи по счетам УСПГ' || p==='Платежи по счетам ЗМК' || p==='Прочие обязательные платежи') payTot+=num(r['Сумма']); }});
+  document.getElementById('kpi-free').textContent = sv!=null?fmtDec3(sv):'—';
+  document.getElementById('kpi-credit').textContent = cr!=null?fmtDec3(cr):'—';
+  document.getElementById('kpi-pay').textContent = fmtDec3(payTot);
 }
 
-function paintPay(){
-  const pay=STATE.pay||[]; const key=latestKey(pay);
-  let plan=0, signed=0, u=0, z=0, pr=0;
-  pay.forEach(r=>{ if(dateKey(r['Дата'])===key){ const name=(''+(r['Показатель']||'')).toLowerCase().trim(); const v=num(r['Сумма']);
-    if(name.includes('план расходов')) plan+=v;
-    else if(name.includes('подписан')) signed+=v;
-    else if(name.includes('успг')) u+=v;
-    else if(name.includes('змк')) z+=v;
-    else if(name.includes('проч')) pr+=v;
-  }});
-  document.getElementById('pay-plan').textContent=fmtDec3(plan);
-  document.getElementById('pay-signed').textContent=fmtDec3(signed);
-  const cats=[{n:'УСПГ',v:u},{n:'ЗМК',v:z},{n:'Прочие обяз. платежи',v:pr}];
-  const track=document.getElementById('pay-track'); track.innerHTML='';
-  const tot=Math.max(1e-6, cats.reduce((a,c)=>a+c.v,0)); document.getElementById('pay-tot').textContent=fmtDec3(tot);
-  const palette=['#548bbe','#ce9158','#a175bc'];
-  cats.forEach((c,i)=>{ const seg=document.createElement('div'); seg.className='seg'; seg.style.cssText=`width:${c.v/tot*100}%;background:${palette[i%3]};display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;`; seg.textContent=fmtDec3(c.v); track.appendChild(seg); });
-  document.getElementById('pay-row-label').textContent='Платежи на '+(key? key.slice(6,8)+'.'+key.slice(4,6)+'.'+key.slice(0,4):'');
-  const bt=document.getElementById('pay-title'); if(bt && key) bt.textContent='Платежи — план, подписанные и платежи на '+key.slice(6,8)+'.'+key.slice(4,6)+'.'+key.slice(0,4)+' (млн.руб.)';
+function paintDS(key){
+  const block=document.getElementById('ds-block'); const trackCur=document.getElementById('ds-cur'); const trackAdv=document.getElementById('ds-adv'); const totalCur=document.getElementById('ds-cur-sum'); const totalAdv=document.getElementById('ds-adv-sum');
+  const colorBy={'Газпромнефть-Снабжение':'#c07c7c','ГСП-4':'#c0ad7c','Прочие':'#a2c07c','Меретояханефтегаз':'#7cc087','Велесстрой':'#7cc0b7','СС7':'#7c97c0'}; const order=['СС7','Велесстрой','Меретояханефтегаз','Газпромнефть-Снабжение','ГСП-4','Прочие'];
+  function paintRow(track,total,arr){ track.innerHTML=''; const agg={}; arr.forEach(r=>{ const k=(''+(r['Контрагент']||'')).trim(); if(!k) return; const v=Math.round(num(r['Сумма'])); agg[k]=(agg[k]||0)+v; }); const items=order.map(n=>({n,v:agg[n]||0})).filter(x=>x.v>0); const sum=Math.max(1,items.reduce((a,b)=>a+b.v,0)); items.forEach(it=>{ const seg=document.createElement('div'); seg.className='seg'; seg.style.cssText=`width:${it.v/sum*100}%;background:${colorBy[it.n]||'#548bbe'}`; seg.title=it.n+': '+fmtInt(it.v); seg.textContent=fmtInt(it.v); track.appendChild(seg); }); total.textContent=fmtInt(items.reduce((a,b)=>a+b.v,0)); }
+  const cur=STATE.ds.filter(r=>(''+(r['Показатель']||'')).trim()==='Плановые текущие поступления' && dateKey(r['Дата'])===key && r['Контрагент']);
+  const adv=STATE.ds.filter(r=>(''+(r['Показатель']||'')).trim()==='Плановые поступления авансов' && dateKey(r['Дата'])===key && r['Контрагент']);
+  paintRow(trackCur,totalCur,cur); paintRow(trackAdv,totalAdv,adv);
+  document.getElementById('ds-legend').innerHTML = order.map(name=>`<span><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:${colorBy[name]||'#548bbe'};margin-right:6px;"></span>${name}</span>`).join('');
 }
 
-function monthIdxWord(s){ if(!s) return null; const t=(''+s).toLowerCase().trim(); const mm={янв:1,фев:2,мар:3,апр:4,ма:5,июн:6,июл:7,авг:8,сен:9,окт:10,ноя:11,дек:12}; for(const k in mm){ if(t.startsWith(k)) return mm[k]; } const m=t.match(/^(0?[1-9]|1[0-2])$/); return m? +m[1] : null; }
-function rebuildPlanFact(){
-  const key = latestKey(STATE.pay||[]) || latestKey(STATE.ds||[]); const curM = key? parseInt(key.slice(4,6),10) : null;
-  const mName={1:'Январь',2:'Февраль',3:'Март',4:'Апрель',5:'Май',6:'Июнь',7:'Июль',8:'Август',9:'Сентябрь',10:'Октябрь',11:'Ноябрь',12:'Декабрь'};
-  function build(rows, targetId, legId){
-    if(!rows || !rows.length) return;
-    const map={};
-    rows.forEach(r=>{ const dept=(''+(r['Отдел']||'')).trim(); if(!dept) return; const mi=monthIdxWord(r['Месяц']); const p=num(r['План']); const f=num(r['Факт']); if(!map[dept]) map[dept]={dept,pT:0,fT:0,pM:0,fM:0}; map[dept].pT+=p; map[dept].fT+=f; if(curM && mi===curM){ map[dept].pM+=p; map[dept].fM+=f; } });
-    const data=Object.values(map); if(!data.length) return; const wrap=document.getElementById(targetId); if(!wrap) return; wrap.innerHTML='';
-    const maxP=Math.max(1, ...data.map(x=>x.pT));
-    data.forEach(r=>{ const row=document.createElement('div'); row.className='row'; row.innerHTML=`
-      <div class="row-label">${r.dept}</div>
-      <div class="bars">
-        <div class="lane" title="Весь период — План: ${fmtInt(r.pT)}, Факт: ${fmtInt(r.fT)}">
-          <div class="bar plan" style="width:${(r.pT/maxP*100).toFixed(2)}%"></div>
-          <div class="bar fact" style="width:${(r.fT/maxP*100).toFixed(2)}%"></div>
-          <div class="caption">Всего: П ${fmtInt(r.pT)}, Ф ${fmtInt(r.fT)} — ${r.pT?fmtInt(r.fT/r.pT*100):'0'}%</div>
-        </div>
-        <div class="lane" title="${mName[curM||9] || ''} — План: ${fmtInt(r.pM)}, Факт: ${fmtInt(r.fM)}">
-          <div class="bar plan" style="width:${(r.pM/maxP*100).toFixed(2)}%"></div>
-          <div class="bar fact" style="width:${(r.fM/maxP*100).toFixed(2)}%"></div>
-          <div class="caption">${['','Янв','Фев','Мар','Апр','Май','Июн','Июл','Авг','Сен','Окт','Ноя','Дек'][curM||9]}: П ${fmtInt(r.pM)}, Ф ${fmtInt(r.fM)} — ${r.pM?fmtInt(r.fM/r.pM*100):'0'}%</div>
-        </div>
-      </div>`; wrap.appendChild(row); });
-    const leg=document.getElementById(legId); if(leg){ leg.innerHTML = '<span><span style="display:inline-block;width:14px;height:14px;border-radius:4px;background:var(--plan);opacity:.5;margin-right:6px;"></span>План</span>'+
-      '<span><span style="display:inline-block;width:14px;height:14px;border-radius:4px;background:var(--fact);margin-right:6px;"></span>Факт</span>'; }
-  }
-  build(STATE.pfSales, 'pf-sales', 'pf-sales-leg');
-  build(STATE.pfManuf, 'pf-manuf', 'pf-manuf-leg');
+function paintPay(key){
+  let plan=0,signed=0,u=0,z=0,pr=0; STATE.pay.forEach(r=>{ if(dateKey(r['Дата'])===key){ const t=(''+(r['Показатель']||'')).toLowerCase().trim(); const v=num(r['Сумма']); if(t.includes('план расходов')) plan+=v; else if(t.includes('подписан')) signed+=v; else if(t.includes('успг')) u+=v; else if(t.includes('змк')) z+=v; else if(t.includes('проч')) pr+=v; }});
+  document.getElementById('pay-plan').textContent=fmtDec3(plan); document.getElementById('pay-signed').textContent=fmtDec3(signed);
+  const cats=[{n:'УСПГ',v:u},{n:'ЗМК',v:z},{n:'Прочие обяз. платежи',v:pr}], track=document.getElementById('pay-track'); track.innerHTML=''; const tot=Math.max(1e-6,cats.reduce((a,c)=>a+c.v,0));
+  const palette=['#548bbe','#ce9158','#a175bc']; cats.forEach((c,i)=>{ const seg=document.createElement('div'); seg.className='seg'; seg.style.cssText=`width:${c.v/tot*100}%;background:${palette[i%3]}`; seg.textContent=fmtDec3(c.v); seg.title=c.n+': '+fmtDec3(c.v); track.appendChild(seg); });
+  document.getElementById('pay-total').textContent=fmtDec3(tot);
+  const title=document.getElementById('pay-title'); title.textContent='Платежи — план, подписанные и платежи на '+keyLabel(key,false)+' (млн.руб.)'; document.getElementById('pay-row-label').textContent='Платежи на '+keyLabel(key,true);
 }
+
+// ===== План‑факт (две дорожки, авто‑месяц по последней дате) =====
+const MLIST=[["янв",1],["фев",2],["мар",3],["апр",4],["ма",5],["июн",6],["июл",7],["авг",8],["сен",9],["окт",10],["ноя",11],["дек",12]];
+const mName={1:'Январь',2:'Февраль',3:'Март',4:'Апрель',5:'Май',6:'Июнь',7:'Июль',8:'Август',9:'Сентябрь',10:'Октябрь',11:'Ноябрь',12:'Декабрь'};
+const mShort={1:'Янв',2:'Фев',3:'Мар',4:'Апр',5:'Май',6:'Июн',7:'Июл',8:'Авг',9:'Сен',10:'Окт',11:'Ноя',12:'Дек'};
+function monthIdxWord(s){ if(!s) return null; const t=(''+s).toLowerCase().trim(); for(const [p,i] of MLIST){ if(t.startsWith(p)) return i; } const m=t.match(/^(0?[1-9]|1[0-2])$/); return m? +m[1] : null; }
+function buildPlanFact(rows, containerId, legId, monthIdx){
+  const map={}; rows.forEach(r=>{ const dept=(''+(r['Отдел']||'')).trim(); if(!dept) return; const mi=monthIdxWord(r['Месяц']); const p=num(r['План']); const f=num(r['Факт']); if(!map[dept]) map[dept]={dept,pT:0,fT:0,pM:0,fM:0}; map[dept].pT+=p; map[dept].fT+=f; if(mi===monthIdx){ map[dept].pM+=p; map[dept].fM+=f; } });
+  const data=Object.values(map); const wrap=document.getElementById(containerId); if(!wrap) return; wrap.innerHTML=''; if(!data.length) return;
+  const maxP=Math.max(1,...data.map(x=>x.pT)); data.forEach(r=>{ const row=document.createElement('div'); row.className='row'; row.innerHTML=`<div class="row-label">${r.dept}</div><div class="bars">
+    <div class="lane" title="Весь период — План: ${fmtInt(r.pT)}, Факт: ${fmtInt(r.fT)}">
+      <div class="bar plan" style="width:${(r.pT/maxP*100).toFixed(2)}%"></div>
+      <div class="bar fact" style="width:${(r.fT/maxP*100).toFixed(2)}%"></div>
+      <div class="caption">Всего: П ${fmtInt(r.pT)}, Ф ${fmtInt(r.fT)} — ${r.pT?fmtInt(r.fT/r.pT*100):'0'}%</div>
+    </div>
+    <div class="lane" title="${mName[monthIdx]} — План: ${fmtInt(r.pM)}, Факт: ${fmtInt(r.fM)}">
+      <div class="bar plan sep" style="width:${(r.pM/maxP*100).toFixed(2)}%"></div>
+      <div class="bar fact sep" style="width:${(r.fM/maxP*100).toFixed(2)}%"></div>
+      <div class="caption">${mShort[monthIdx]}: П ${fmtInt(r.pM)}, Ф ${fmtInt(r.fM)} — ${r.pM?fmtInt(r.fM/r.pM*100):'0'}%</div>
+    </div></div>`; wrap.appendChild(row); });
+  const leg=document.getElementById(legId); if(leg){ leg.innerHTML=`<span><span style="display:inline-block;width:14px;height:14px;border-radius:4px;background:var(--plan);opacity:.45;margin-right:6px;"></span>План</span>
+  <span><span style="display:inline-block;width:14px;height:14px;border-radius:4px;background:var(--fact);margin-right:6px;"></span>Факт</span>
+  <span><span style="display:inline-block;width:14px;height:14px;border-radius:4px;background:var(--plan);opacity:.7;margin-right:6px;background:repeating-linear-gradient(45deg, rgba(14,165,162,.8) 0 6px, rgba(14,165,162,.5) 6px 12px);"></span>План — ${mName[monthIdx]}</span>
+  <span><span style="display:inline-block;width:14px;height:14px;border-radius:4px;background:repeating-linear-gradient(45deg, rgba(20,184,166,.9) 0 6px, rgba(20,184,166,.6) 6px 12px);margin-right:6px;"></span>Факт — ${mName[monthIdx]}</span>`; }
+}
+
+function applyAll(key){
+  const keyDs = key || latestKey(STATE.ds); const keyPay = key || latestKey(STATE.pay);
+  const best = (!keyDs || (keyPay && keyPay>keyDs)) ? keyPay : keyDs; // для заголовков
+  const monthIdx = best ? parseInt(best.slice(4,6),10) : 9; STATE.monthIdx = monthIdx;
+  paintKPIs(keyDs,keyPay); paintDS(keyDs); paintPay(keyPay);
+  buildPlanFact(STATE.pfSales,'pf-sales','pf-sales-leg',monthIdx);
+  buildPlanFact(STATE.pfManuf,'pf-manuf','pf-manuf-leg',monthIdx);
+  const input=document.getElementById('pay-date'); if(input && best){ input.value = keyLabel(best,false).split('.').reverse().join('-'); }
+}
+
 async function loadAll(){
   statusEl.textContent='Загрузка…';
-  log('--- Начало загрузки ---');
   try{
     const [t1,t2,t3,t4] = await Promise.all([
       fetchCsvWithFallback('ds'),
@@ -253,21 +235,20 @@ async function loadAll(){
       fetchCsvWithFallback('pfSales'),
       fetchCsvWithFallback('pfManuf'),
     ]);
-    STATE.ds = parseCSV(t1);
-    STATE.pay = parseCSV(t2);
-    STATE.pfSales = parseCSV(t3);
-    STATE.pfManuf = parseCSV(t4);
+    STATE.ds=parseCSV(t1); STATE.pay=parseCSV(t2); STATE.pfSales=parseCSV(t3); STATE.pfManuf=parseCSV(t4);
     log('Успех: все CSV считаны.');
-    paintDs(); paintPay(); rebuildPlanFact();
+    applyAll();
     statusEl.textContent='Готово: данные обновлены из Google Sheets';
     setTimeout(()=> statusEl.textContent='', 4000);
-  }catch(e){
-    statusEl.textContent='Ошибка загрузки CSV — см. диагностику ниже';
-    log('ОШИБКА: '+e.message);
-  }
+  }catch(e){ statusEl.textContent='Ошибка загрузки CSV — см. диагностику ниже'; log('ОШИБКА: '+e.message); }
 }
 
 document.getElementById('reload').addEventListener('click', loadAll);
+
+document.getElementById('apply-paydate').addEventListener('click', ()=>{
+  const raw=(document.getElementById('pay-date')||{}).value; let key=null; if(raw && /^\d{4}-\d{2}-\d{2}$/.test(raw)) key=raw.replace(/-/g,''); applyAll(key);
+});
+
 loadAll();
 </script>
 </body>
