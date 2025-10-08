@@ -175,7 +175,9 @@ async function fetchCsvWithFallback(name){
     log(`[GVIZ] ${name}: status ${r2.status}`);
     if(!r2.ok) throw new Error('gviz not ok '+r2.status);
     return await r2.text();
-  }
+
+
+  }feat: cache-buster for CSV
 
 function paintKPIs(keyDs,keyPay){
   let sv=null, cr=null, payTot=0;
