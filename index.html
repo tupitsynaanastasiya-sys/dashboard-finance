@@ -206,7 +206,7 @@ function paintPay(key){
     if(dateKey(r['Дата'])===key){
       const t=(''+(r['Показатель']||'')).toLowerCase().trim();
       const v=num(r['Сумма']);
-      if(t.includes('план расходов')) plan+=v;
+      if (t.includes('плановые платеж') || t.includes('план расходов')) plan += v;
       else if(t.includes('подписан')) signed+=v;
       else if(t.includes('успг')) u+=v;
       else if(t.includes('змк')) z+=v;
