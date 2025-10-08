@@ -39,7 +39,7 @@
   .bar.fact { background:var(--fact); }
   .bar.plan.sep { background:repeating-linear-gradient(45deg, rgba(14,165,162,.8) 0 6px, rgba(14,165,162,.5) 6px 12px); }
   .bar.fact.sep { background:repeating-linear-gradient(45deg, rgba(20,184,166,.9) 0 6px, rgba(20,184,166,.6) 6px 12px); }
-  .caption { position:absolute; right:8px; top:50%; transform:translateY(-50%); font-size:12px; font-weight:600; color:#0f172a; }
+  .caption { position:absolute; right:8px; left:auto; top:50%; transform:translateY(-50%); font-size:12px; font-weight:600; color:#0f172a; text-align:right; }
 </style>
 </head>
 <body>
@@ -183,12 +183,44 @@ function paintDS(key){
 }
 
 function paintPay(key){
-  let plan=0,signed=0,u=0,z=0,pr=0; STATE.pay.forEach(r=>{ if(dateKey(r['Дата'])===key){ const t=(''+(r['Показатель']||'')).toLowerCase().trim(); const v=num(r['Сумма']); if(t.includes('план расходов')) plan+=v; else if(t.includes('подписан')) signed+=v; else if(t.includes('успг')) u+=v; else if(t.includes('змк')) z+=v; else if(t.includes('проч')) pr+=v; }});
-  document.getElementById('pay-plan').textContent=fmtDec3(plan); document.getElementById('pay-signed').textContent=fmtDec3(signed);
-  const cats=[{n:'УСПГ',v:u},{n:'ЗМК',v:z},{n:'Прочие обяз. платежи',v:pr}], track=document.getElementById('pay-track'); track.innerHTML=''; const tot=Math.max(1e-6,cats.reduce((a,c)=>a+c.v,0));
-  const palette=['#548bbe','#ce9158','#a175bc']; cats.forEach((c,i)=>{ const seg=document.createElement('div'); seg.className='seg'; seg.style.cssText=`width:${c.v/tot*100}%;background:${palette[i%3]}`; seg.textContent=fmtDec3(c.v); seg.title=c.n+': '+fmtDec3(c.v); track.appendChild(seg); });
-  document.getElementById('pay-total').textContent=fmtDec3(tot);
-  const title=document.getElementById('pay-title'); title.textContent='Платежи — план, подписанные и платежи на '+keyLabel(key,false)+' (млн.руб.)'; document.getElementById('pay-row-label').textContent='Платежи на '+keyLabel(key,true);
+  let plan=0,signed=0,u=0,z=0,pr=0;
+  (STATE.pay||[]).forEach(r=>{
+    if(dateKey(r['Дата'])===key){
+      const t=(''+(r['Показатель']||'')).toLowerCase().trim();
+      const v=num(r['Сумма']);
+      if(t.includes('план расходов')) plan+=v;
+      else if(t.includes('подписан')) signed+=v;
+      else if(t.includes('успг')) u+=v;
+      else if(t.includes('змк')) z+=v;
+      else if(t.includes('проч')) pr+=v;
+    }
+  });
+  // значения в строках
+  const elPlan=document.getElementById('pay-plan'); if(elPlan) elPlan.textContent=fmtDec3(plan);
+  const elSigned=document.getElementById('pay-signed'); if(elSigned) elSigned.textContent=fmtDec3(signed);
+
+  // сегменты платежей + итог
+  const cats=[{n:'УСПГ',v:u},{n:'ЗМК',v:z},{n:'Прочие обяз. платежи',v:pr}];
+  const track=document.getElementById('pay-track'); if(track) track.innerHTML='';
+  const tot=Math.max(0, cats.reduce((a,c)=>a+(c.v||0),0));
+  const palette=['#548bbe','#ce9158','#a175bc'];
+  if(track){
+    const widthTot = tot>0 ? tot : 1; // чтобы деления не было на 0
+    cats.forEach((c,i)=>{
+      const seg=document.createElement('div');
+      seg.className='seg';
+      seg.style.cssText=`width:${(c.v/widthTot*100)}%;background:${palette[i%3]}`;
+      seg.textContent=fmtDec3(c.v);
+      seg.title=c.n+': '+fmtDec3(c.v);
+      track.appendChild(seg);
+    });
+  }
+  const elTot=document.getElementById('pay-total'); if(elTot) elTot.textContent=fmtDec3(tot);
+  const kpiTot=document.getElementById('kpi-pay'); if(kpiTot) kpiTot.textContent=fmtDec3(tot); // <<< KPI «Платежи всего»
+
+  // подписи «на дату»
+  const title=document.getElementById('pay-title'); if(title) title.textContent='Платежи — план, подписанные и платежи на '+keyLabel(key,false)+' (млн.руб.)';
+  const rowLbl=document.getElementById('pay-row-label'); if(rowLbl) rowLbl.textContent='Платежи на '+keyLabel(key,true);
 }
 
 // ===== План‑факт (две дорожки, авто‑месяц по последней дате) =====
