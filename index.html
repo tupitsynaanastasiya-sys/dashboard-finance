@@ -159,23 +159,23 @@ const STATE={ ds:[], pay:[], pfSales:[], pfManuf:[], monthIdx:9 };
 
 async function fetchCsvWithFallback(name){
   const uPub = URLS_PUB[name], uG = URLS_GVIZ[name];
-  // добавляем метку времени, чтобы обходить кэш Google
+  // добавляем метку времени, чтобы обойти кэш Google/браузера
   const bust = (u) => u + (u.includes('?') ? '&' : '?') + '_=' + Date.now();
 
   try{
     const r = await fetch(bust(uPub), { cache: 'no-store' });
     log(`[PUB] ${name}: status ${r.status}`);
-    if(!r.ok) throw new Error('pub not ok '+r.status);
+    if(!r.ok) throw new Error('pub not ok ' + r.status);
     const t = await r.text();
-    if(/необходимо иметь разрешение|signin/i.test(t)) throw new Error('pub permission');
+    if (/необходимо иметь разрешение|signin/i.test(t)) throw new Error('pub permission');
     return t;
   }catch(e){
     log(`[GVIZ] ${name}: trying fallback due to: ${e.message}`);
     const r2 = await fetch(bust(uG), { cache: 'no-store' });
     log(`[GVIZ] ${name}: status ${r2.status}`);
-    if(!r2.ok) throw new Error('gviz not ok '+r2.status);
+    if(!r2.ok) throw new Error('gviz not ok ' + r2.status);
     return await r2.text();
-
+  }
 
   }feat: cache-buster for CSV
 
