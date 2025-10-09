@@ -204,17 +204,41 @@ function paintPay(key){
   const track=document.getElementById('pay-track'); if(track) track.innerHTML='';
   const tot=Math.max(0, cats.reduce((a,c)=>a+(c.v||0),0));
   const palette=['#548bbe','#ce9158','#a175bc'];
-  if(track){
-    const widthTot = tot>0 ? tot : 1; // чтобы деления не было на 0
-    cats.forEach((c,i)=>{
-      const seg=document.createElement('div');
-      seg.className='seg';
-      seg.style.cssText=`width:${(c.v/widthTot*100)}%;background:${palette[i%3]}`;
-      seg.textContent=fmtDec3(c.v);
-      seg.title=c.n+': '+fmtDec3(c.v);
-      track.appendChild(seg);
-    });
-  }
+ if (track) {
+  track.innerHTML = '';
+  track.style.position = 'relative';
+
+  const widthTot = tot > 0 ? tot : 1;
+  let offset = 0; // накопленная ширина в %
+
+  cats.forEach((c, i) => {
+    const w = (c.v / widthTot * 100);
+    const seg = document.createElement('div');
+    seg.className = 'seg';
+    seg.style.cssText = `width:${w}%;background:${palette[i%3]}`;
+    seg.title = c.n + ': ' + fmtDec3(c.v);
+
+    // Если сегмент достаточно широкий — пишем число внутри
+    if (w >= 12) {
+      seg.textContent = fmtDec3(c.v);
+    }
+    track.appendChild(seg);
+
+    // Если сегмент узкий, делаем «плавающую» метку сверху
+    if (w > 0 && w < 12) {
+      const float = document.createElement('div');
+      float.className = 'seg-float';
+      float.textContent = fmtDec3(c.v);
+      // ставим метку по центру сегмента
+      const center = offset + w / 2; // %
+      float.style.left = `${center}%`;
+      track.appendChild(float);
+    }
+
+    offset += w;
+  });
+}
+
   const elTot=document.getElementById('pay-total'); if(elTot) elTot.textContent=fmtDec3(tot);
   const kpiTot=document.getElementById('kpi-pay'); if(kpiTot) kpiTot.textContent=fmtDec3(tot); // <<< KPI «Платежи всего»
 
