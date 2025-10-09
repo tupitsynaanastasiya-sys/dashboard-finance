@@ -159,27 +159,9 @@ const STATE={ ds:[], pay:[], pfSales:[], pfManuf:[], monthIdx:9 };
 
 async function fetchCsvWithFallback(name){
   const uPub = URLS_PUB[name], uG = URLS_GVIZ[name];
-  // анти-кэш: добавляем метку времени к URL (работает и когда в URL уже есть ?)
-  const bust = (u) => u + (u.includes('?') ? '&' : '?') + '_=' + Date.now();
-
-  try{
-    const r = await fetch(bust(uPub), { cache: 'no-store' });
-    log(`[PUB] ${name}: status ${r.status}`);
-    if(!r.ok) throw new Error('pub not ok ' + r.status);
-    const t = await r.text();
-    if (/необходимо иметь разрешение|signin/i.test(t))
-      throw new Error('pub permission');
-    return t;
-  }catch(e){
-    log(`[GVIZ] ${name}: trying fallback due to: ${e.message}`);
-    const r2 = await fetch(bust(uG), { cache: 'no-store' });
-    log(`[GVIZ] ${name}: status ${r2.status}`);
-    if(!r2.ok) throw new Error('gviz not ok ' + r2.status);
-    return await r2.text();
-  }
-
-
-  }feat: cache-buster for CSV
+  try{ const r=await fetch(uPub,{cache:'no-store'}); log(`[PUB] ${name}: status ${r.status}`); if(!r.ok) throw new Error('pub not ok '+r.status); const t=await r.text(); if(/необходимо иметь разрешение|signin/i.test(t)) throw new Error('pub permission'); return t; }
+  catch(e){ log(`[GVIZ] ${name}: trying fallback due to: ${e.message}`); const r2=await fetch(uG,{cache:'no-store'}); log(`[GVIZ] ${name}: status ${r2.status}`); if(!r2.ok) throw new Error('gviz not ok '+r2.status); return await r2.text(); }
+}
 
 function paintKPIs(keyDs,keyPay){
   let sv=null, cr=null, payTot=0;
@@ -206,7 +188,7 @@ function paintPay(key){
     if(dateKey(r['Дата'])===key){
       const t=(''+(r['Показатель']||'')).toLowerCase().trim();
       const v=num(r['Сумма']);
-      if (t.includes('плановые платеж') || t.includes('план расходов')) plan += v;
+      if(t.includes('план расходов')) plan+=v;
       else if(t.includes('подписан')) signed+=v;
       else if(t.includes('успг')) u+=v;
       else if(t.includes('змк')) z+=v;
