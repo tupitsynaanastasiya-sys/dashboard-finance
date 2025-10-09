@@ -159,7 +159,6 @@ const STATE={ ds:[], pay:[], pfSales:[], pfManuf:[], monthIdx:9 };
 
 async function fetchCsvWithFallback(name){
   const uPub = URLS_PUB[name], uG = URLS_GVIZ[name];
-
   // анти-кэш: добавляем метку времени к URL (работает и с уже имеющимся ?query)
   const bust = (u) => u + (u.includes('?') ? '&' : '?') + '_=' + Date.now();
 
@@ -177,7 +176,6 @@ async function fetchCsvWithFallback(name){
     if(!r2.ok) throw new Error('gviz not ok ' + r2.status);
     return await r2.text();
   }
-}
 
   }feat: cache-buster for CSV
 
