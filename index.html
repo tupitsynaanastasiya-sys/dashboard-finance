@@ -163,13 +163,50 @@ async function fetchCsvWithFallback(name){
   catch(e){ log(`[GVIZ] ${name}: trying fallback due to: ${e.message}`); const r2=await fetch(uG,{cache:'no-store'}); log(`[GVIZ] ${name}: status ${r2.status}`); if(!r2.ok) throw new Error('gviz not ok '+r2.status); return await r2.text(); }
 }
 
-function paintKPIs(keyDs,keyPay){
+function paintKPIs(keyDs, keyPay){
   let sv=null, cr=null, payTot=0;
-  STATE.ds.forEach(r=>{ if(dateKey(r['Дата'])===keyDs){ const p=(''+(r['Показатель']||'')).trim(); if(p==='Свободные ДС') sv=num(r['Сумма']); if(p==='В том числе кредитные ДС') cr=num(r['Сумма']); }});
-  STATE.pay.forEach(r=>{ if(dateKey(r['Дата'])===keyPay){ const p=(''+(r['Показатель']||'')).trim(); if(p==='Платежи по счетам УСПГ' || p==='Платежи по счетам ЗМК' || p==='Прочие обязательные платежи') payTot+=num(r['Сумма']); }});
-  document.getElementById('kpi-free').textContent = sv!=null?fmtDec3(sv):'—';
-  document.getElementById('kpi-credit').textContent = cr!=null?fmtDec3(cr):'—';
-  document.getElementById('kpi-pay').textContent = fmtDec3(payTot);
+
+  // поддерживаем и новые, и старые формулировки
+  const nameMap = {
+    free: [
+      'ДС на утро',
+      'Свободные ДС',
+      'Свободные средства'
+    ],
+    credit: [
+      'Кредитные ДС на утро',
+      'В том числе кредитные ДС',
+      'Кредитные ДС'
+    ]
+  };
+  const matchName = (name, list) => {
+    const s = (name||'').trim().toLowerCase();
+    return list.some(x => s === x.toLowerCase());
+  };
+
+  // ДС: берём строки за выбранную дату
+  STATE.ds.forEach(r=>{
+    if (dateKey(r['Дата']) === keyDs) {
+      const p = (r['Показатель']||'').trim();
+      if (matchName(p, nameMap.free))   sv = num(r['Сумма']);
+      if (matchName(p, nameMap.credit)) cr = num(r['Сумма']);
+    }
+  });
+
+  // Платежи всего: суммируем категории
+  STATE.pay.forEach(r=>{
+    if (dateKey(r['Дата']) === keyPay) {
+      const t = (r['Показатель']||'').toLowerCase();
+      if (t.includes('успг') || t.includes('змк') || t.includes('проч')) {
+        payTot += num(r['Сумма']);
+      }
+    }
+  });
+
+  // Выводим значения
+  document.getElementById('kpi-free').textContent   = sv!=null ? fmtDec3(sv) : '—';
+  document.getElementById('kpi-credit').textContent = cr!=null ? fmtDec3(cr) : '—';
+  document.getElementById('kpi-pay').textContent    = fmtDec3(payTot);
 }
 
 function paintDS(key){
